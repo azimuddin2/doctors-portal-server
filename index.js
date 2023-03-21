@@ -16,6 +16,7 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 
 function verifyJWT(req, res, next) {
     const authHeader = req.headers.authorization;
+
     if (!authHeader) {
         return res.status(401).send({ message: 'UnAuthorized access' });
     }
@@ -27,7 +28,7 @@ function verifyJWT(req, res, next) {
         req.decoded = decoded;
         next();
     });
-}
+};
 
 async function run() {
     try {
@@ -36,6 +37,7 @@ async function run() {
         const bookingCollection = client.db('doctorsPortal').collection('booking');
         const userCollection = client.db('doctorsPortal').collection('users');
 
+        // Service operation
         app.get('/services', async (req, res) => {
             const query = {};
             const cursor = serviceCollection.find(query);
@@ -65,8 +67,10 @@ async function run() {
                 service.slots = available;
             })
             res.send(services);
-        })
+        });
 
+
+        // Booking operation
         app.post('/booking', async (req, res) => {
             const booking = req.body;
             const query = {
@@ -84,20 +88,37 @@ async function run() {
             }
         });
 
-        app.get('/booking', verifyJWT, async (req, res) => {
-            const patientEmail = req.query.patientEmail;
+        app.get('/bookings', verifyJWT, async (req, res) => {
+            const email = req.query.email;
             const decodedEmail = req.decoded.email;
-            if (patientEmail === decodedEmail) {
-                const query = { patientEmail: patientEmail };
-                const cursor = bookingCollection.find(query);
-                const result = await cursor.toArray();
-                return res.send(result);
-            }
-            else {
-                return res.status(403).send({ message: 'Forbidden access' });
-            }
 
-        })
+            if (email !== decodedEmail) {
+                return res.status(403).send({ message: 'forbidden access' })
+            }
+            const query = { patientEmail: email };
+            const bookings = await bookingCollection.find(query).toArray();
+            res.send(bookings);
+        });
+
+
+
+        // User operation
+        app.get('/jwt', async (req, res) => {
+            const email = req.query.email;
+            const query = { email: email };
+            const user = await userCollection.findOne(query);
+            if (user) {
+                const token = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+                return res.send({ accessToken: token });
+            }
+            res.status(403).send({ accessToken: '' });
+        });
+
+        app.post('/user', async (req, res) => {
+            const user = req.body;
+            const result = await userCollection.insertOne(user);
+            res.send(result);
+        });
 
         app.put('/user/:email', async (req, res) => {
             const email = req.params.email;
@@ -110,12 +131,12 @@ async function run() {
             const result = await userCollection.updateOne(filter, updateDoc, options);
             const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
             res.send({ result, token });
-        })
+        });
 
         app.get('/user', async (req, res) => {
             const users = await userCollection.find().toArray();
             res.send(users);
-        })
+        });
 
 
     }
