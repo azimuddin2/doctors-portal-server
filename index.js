@@ -69,6 +69,12 @@ async function run() {
             res.send(services);
         });
 
+        app.get('/appointments', async (req, res) => {
+            const query = {};
+            const result = await serviceCollection.find(query).project({ name: 1 }).toArray();
+            res.send(result);
+        });
+
 
 
         // Booking operation
