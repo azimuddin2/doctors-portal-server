@@ -6,6 +6,9 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
 const port = process.env.PORT || 5000;
 
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
+
 // middleware
 app.use(cors());
 app.use(express.json());
@@ -40,6 +43,7 @@ async function run() {
         const bookingCollection = client.db('doctorsPortal').collection('booking');
         const userCollection = client.db('doctorsPortal').collection('users');
         const doctorCollection = client.db('doctorsPortal').collection('doctors');
+        const paymentCollection = client.db('doctorsPortal').collection('payments')
 
 
         // Verify Admin
@@ -193,6 +197,41 @@ async function run() {
             res.send(result);
         });
 
+
+
+        // payment operation
+        app.post('/create-payment-intent', async (req, res) => {
+            const payment = req.body;
+            const price = payment.price;
+            const amount = price * 100;
+
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: "usd",
+                "payment_method_types": [
+                    "card"
+                ]
+            });
+
+            res.send({
+                clientSecret: paymentIntent.client_secret,
+            });
+        });
+
+        app.post('/payments', async (req, res) => {
+            const payment = req.body;
+            const result = await paymentCollection.insertOne(payment);
+            const id = payment.paymentId;
+            const filter = { _id: new ObjectId(id) };
+            const updateDoc = {
+                $set: {
+                    paid: true,
+                    transactionId: payment.transactionId
+                }
+            }
+            const updateResult = await bookingCollection.updateOne(filter, updateDoc);
+            res.send(result);
+        });
 
 
 
