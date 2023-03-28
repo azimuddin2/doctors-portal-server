@@ -143,7 +143,7 @@ async function run() {
             res.status(403).send({ accessToken: '' });
         });
 
-        app.post('/user', async (req, res) => {
+        app.post('/user', verifyJWT, verifyAdmin, async (req, res) => {
             const user = req.body;
             const result = await userCollection.insertOne(user);
             res.send(result);
@@ -173,6 +173,13 @@ async function run() {
             const query = { email: email };
             const user = await userCollection.findOne(query);
             res.send({ isAdmin: user?.role === 'admin' });
+        });
+
+        app.delete('/user/:id', verifyJWT, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await userCollection.deleteOne(query);
+            res.send(result);
         });
 
 
