@@ -38,7 +38,6 @@ function verifyJWT(req, res, next) {
 
 async function run() {
     try {
-        await client.connect();
         const serviceCollection = client.db('doctorsPortal').collection('service');
         const bookingCollection = client.db('doctorsPortal').collection('booking');
         const userCollection = client.db('doctorsPortal').collection('users');
