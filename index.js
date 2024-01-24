@@ -44,6 +44,16 @@ async function run() {
         const doctorCollection = client.db('doctorsPortal').collection('doctors');
         const paymentCollection = client.db('doctorsPortal').collection('payments')
 
+        app.get('/jwt', async (req, res) => {
+            const email = req.query.email;
+            const query = { email: email };
+            const user = await userCollection.findOne(query);
+            if (user) {
+                const token = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET)
+                return res.send({ accessToken: token });
+            }
+            res.status(403).send({ accessToken: '' });
+        });
 
         // Verify Admin
         const verifyAdmin = async (req, res, next) => {
@@ -55,10 +65,10 @@ async function run() {
                 return res.status(403).send({ message: 'forbidden access' })
             }
             next();
-        }
+        };
 
 
-        // Service operation
+        // Service Collection API
         app.get('/services', async (req, res) => {
             const query = {};
             const cursor = serviceCollection.find(query);
@@ -98,7 +108,7 @@ async function run() {
 
 
 
-        // Booking operation
+        // Booking Collection API
         app.post('/booking', async (req, res) => {
             const booking = req.body;
             const query = {
@@ -130,25 +140,21 @@ async function run() {
 
 
 
-        // User operation
-        app.get('/jwt', async (req, res) => {
-            const email = req.query.email;
-            const query = { email: email };
-            const user = await userCollection.findOne(query);
-            if (user) {
-                const token = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET)
-                return res.send({ accessToken: token });
-            }
-            res.status(403).send({ accessToken: '' });
-        });
-
+        // User Collection API
         app.post('/user', async (req, res) => {
             const user = req.body;
+            const query = {email: user.email};
+            
+            const existingUser = await userCollection.findOne(query);
+            if(existingUser){
+                return res.send({message: 'User already exists'});
+            }
+
             const result = await userCollection.insertOne(user);
             res.send(result);
         });
 
-        app.get('/users', async (req, res) => {
+        app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
             const query = {};
             const users = await userCollection.find(query).toArray();
             res.send(users);
@@ -183,7 +189,7 @@ async function run() {
 
 
 
-        // doctor operation
+        // Doctor Collection API
         app.post('/doctor', verifyJWT, verifyAdmin, async (req, res) => {
             const doctor = req.body;
             const result = await doctorCollection.insertOne(doctor);
@@ -205,7 +211,7 @@ async function run() {
 
 
 
-        // payment operation
+        // Payment Collection API
         app.post('/create-payment-intent', async (req, res) => {
             const payment = req.body;
             const price = payment.price;
