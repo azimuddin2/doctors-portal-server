@@ -42,7 +42,8 @@ async function run() {
         const bookingCollection = client.db('doctorsPortal').collection('booking');
         const userCollection = client.db('doctorsPortal').collection('users');
         const doctorCollection = client.db('doctorsPortal').collection('doctors');
-        const paymentCollection = client.db('doctorsPortal').collection('payments')
+        const paymentCollection = client.db('doctorsPortal').collection('payments');
+        const reviewCollection = client.db('doctorsPortal').collection('reviews');
 
         app.get('/jwt', async (req, res) => {
             const email = req.query.email;
@@ -143,11 +144,11 @@ async function run() {
         // User Collection API
         app.post('/user', async (req, res) => {
             const user = req.body;
-            const query = {email: user.email};
-            
+            const query = { email: user.email };
+
             const existingUser = await userCollection.findOne(query);
-            if(existingUser){
-                return res.send({message: 'User already exists'});
+            if (existingUser) {
+                return res.send({ message: 'User already exists' });
             }
 
             const result = await userCollection.insertOne(user);
@@ -245,6 +246,19 @@ async function run() {
             res.send(result);
         });
 
+
+        // Review related api
+        app.post('/reviews', verifyJWT, async (req, res) => {
+            const reviewInfo = req.body;
+            const result = await reviewCollection.insertOne(reviewInfo);
+            res.send(result);
+        });
+
+        app.get('/reviews', async (req, res) => {
+            const query = {};
+            const reviews = await reviewCollection.find(query).toArray();
+            res.send(reviews);
+        });
 
 
     }
